@@ -3,10 +3,15 @@ import boto3
 from botocore.exceptions import ClientError
 import os
 
+#get environment variable called "env" from the OS
 environment = os.getenv('env')
 
 def get_creds(service):
+    """get valid session client for an AWS service entity
 
+    :param service: the service to connect to
+    :return: session_client object for the service if successful
+    """
     # ARN and a role session name.
     if environment == 'DEV':
         # local testing
@@ -21,6 +26,10 @@ def get_creds(service):
 
 
 def check_role():
+    """Get details on iam identity context
+
+    """
+
     # get a client session
     session_sts_client = get_creds("sts")
     try:
