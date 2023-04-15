@@ -2,9 +2,19 @@ import logging
 import boto3
 from botocore.exceptions import ClientError
 import os
+from aws_xray_sdk.core import xray_recorder
+from aws_xray_sdk.core import patch_all
 
 #get environment variable called "env" from the OS
 environment = os.getenv('env')
+daemon_info = os.getenv('AWS_XRAY_DAEMON_ADDRESS')
+
+#xray_recorder.begin_segment('S3Test Script')
+logging.basicConfig(level=logging.INFO)
+
+logging.info(msg='Starting S3Test Script')
+
+logging.info(f'Daemon is at {daemon_info}')
 
 def get_creds(service):
     """get valid session client for an AWS service entity
@@ -29,15 +39,19 @@ def check_role():
     """Get details on iam identity context
 
     """
-
+    
     # get a client session
     session_sts_client = get_creds("sts")
+
+
     try:
         response = session_sts_client.get_caller_identity()
     except ClientError as e:
         logging.error(e)
         return False
+
     return response
+    
 def upload_file(file_name, bucket, object_name=None):
     """Upload a file to an S3 bucket
 
@@ -48,8 +62,9 @@ def upload_file(file_name, bucket, object_name=None):
     """
     # get credentials from helper method
     session_s3_client = get_creds("s3")
-
+    
     # If S3 object_name was not specified, use file_name
+
     if object_name is None:
         object_name = os.path.basename(file_name)
     try:
@@ -59,16 +74,26 @@ def upload_file(file_name, bucket, object_name=None):
         return False
     return True
 
+
 def main():
     # lets check what role is being assumed in the container at runtime
-
+    
     print(f'sts caller identity details:{check_role()}')
-
+    
+    
     response = upload_file('testupload.txt','rbase-docker',object_name='testupload.txt')
     if response:
         print("Woohoo!")
     else:
         print("Something bad happened")
+    
 
 if __name__== '__main__':
+    plugins = ('ECSPlugin',)
+    xray_recorder.configure(service='S3Test'
+                            ,plugins=plugins
+                            ,context_missing='LOG_ERROR',
+                            sampling=False
+    )
+    patch_all()
     main()
